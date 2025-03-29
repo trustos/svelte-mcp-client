@@ -12,9 +12,10 @@
 	let isLoading = $state(false);
 
 	async function sendMessage() {
-		if (!inputMessage.trim() || isLoading) return;
+		const trimmedMessage = inputMessage.trim();
+		if (!trimmedMessage || isLoading) return;
 
-		const userMessage: Message = { role: 'user', content: inputMessage };
+		const userMessage: Message = { role: 'user', content: trimmedMessage };
 		messages = [...messages, userMessage];
 		inputMessage = '';
 		isLoading = true;
@@ -25,7 +26,10 @@
 				headers: {
 					'Content-Type': 'application/json'
 				},
-				body: JSON.stringify({ messages, config })
+				body: JSON.stringify({
+					messages: messages.filter((msg) => msg.content?.trim()), // Filter out empty messages
+					config
+				})
 			});
 
 			if (!response.ok) throw new Error('Failed to get response');

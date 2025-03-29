@@ -1,11 +1,15 @@
 import { Experimental_StdioMCPTransport as stdioTransport } from 'ai/mcp-stdio';
 import { experimental_createMCPClient } from 'ai';
-import type { ContentItem, ToolResult } from '$types';
+import type { ContentItem, ToolResult, MCPServerConfig } from '$types';
 import type { ToolSet } from 'ai';
 import { BaseMCPTool } from './base.tool';
 
-export class FilesystemTool extends BaseMCPTool {
+export class MCPTool extends BaseMCPTool {
 	private client: Awaited<ReturnType<typeof experimental_createMCPClient>> | null = null;
+
+	constructor(protected config: MCPServerConfig) {
+		super(config);
+	}
 
 	async setup(): Promise<ToolSet> {
 		const stdio = new stdioTransport({

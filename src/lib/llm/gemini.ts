@@ -1,6 +1,12 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { generateText } from 'ai';
-import type { LLMProvider, Message, LLMResponse, ToolsManager } from '$types';
+import {
+	type LLMProvider,
+	type Message,
+	type LLMResponse,
+	type ToolsManager,
+	SYSTEM_PROMPT
+} from '$types';
 
 export class GeminiProvider implements LLMProvider {
 	private google;
@@ -33,8 +39,7 @@ export class GeminiProvider implements LLMProvider {
 			const result = await generateText({
 				model: this.google(this.model),
 				messages: validMessages,
-				system:
-					'You are a helpful assistant that can use various tools to help users. Specifically you can save airbnb search results to files within the allowed directories.',
+				system: SYSTEM_PROMPT,
 				tools,
 				temperature: 0.2 // Add some temperature for more natural responses
 			});

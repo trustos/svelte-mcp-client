@@ -1,4 +1,3 @@
-import { GEMINI_API_KEY } from '$env/static/private';
 import type { RequestHandler } from './$types';
 import { AIToolsManager } from '$lib/tools/tools-manager';
 import type { Message, AIConfig } from '$types';
@@ -9,12 +8,14 @@ import { ToolFactory } from '$lib/tools/tool-factory';
 export const POST: RequestHandler = async ({ request }) => {
 	const { messages, config }: { messages: Message[]; config: AIConfig } = await request.json();
 
+	console.log(messages, config);
+
 	try {
 		const mcpConfig = loadConfig();
 		const tools = ToolFactory.createTools(mcpConfig);
 		const toolsManager = new AIToolsManager(tools);
 
-		const provider = AIProviderFactory.createProvider(config, GEMINI_API_KEY, toolsManager);
+		const provider = AIProviderFactory.createProvider(config, toolsManager);
 		const response = await provider.generateResponse(messages);
 		return new Response(JSON.stringify(response), { status: 200 });
 	} catch (error) {

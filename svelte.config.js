@@ -16,7 +16,8 @@ const config = {
 			$components: './src/components',
 			$utils: './src/utils',
 			$stores: './src/stores',
-			$types: './src/lib/types'
+			$types: './src/lib/types',
+			$shadcn: './src/lib/shadcn'
 		}
 	}
 };

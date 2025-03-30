@@ -44,10 +44,10 @@ export interface LLMProvider {
 	generateResponse(messages: Message[]): Promise<LLMResponse>;
 }
 
-export type AIProvider = 'google' | 'openai' | 'anthropic';
+// export type AIProvider = 'google' | 'openai' | 'anthropic';
 
 export interface AIConfig {
-	provider: AIProvider; // add more providers as needed
+	provider: string; // add more providers as needed
 	model?: string;
 	options?: Record<string, unknown>;
 }

@@ -1,5 +1,6 @@
 <script lang="ts">
-	import type { Message, AIConfig } from '$types';
+	import { type Message, type AIConfig, GOOGLE, type DropdownOptions } from '$types';
+	import { Dropdown } from '$components';
 
 	type Props = {
 		config: AIConfig;
@@ -10,6 +11,20 @@
 	let messages: Message[] = $state([]);
 	let inputMessage = $state('');
 	let isLoading = $state(false);
+
+	const selectChangeHandler = (option: DropdownOptions | undefined) => {
+		if (!option) {
+			return;
+		}
+
+		config.model = option.value;
+		config.provider = option.provider as string;
+
+		// (value) => {
+		// 	console.log(value);
+		// 	// (config.model = value)
+		// }
+	};
 
 	async function sendMessage() {
 		const trimmedMessage = inputMessage.trim();
@@ -54,6 +69,10 @@
 </script>
 
 <div class="mx-auto flex h-[600px] max-w-2xl flex-col rounded-lg bg-white p-4 shadow-lg">
+	<div class="mb-4 flex items-center">
+		<h2 class="text-xl font-bold">Model &nbsp;</h2>
+		<Dropdown options={GOOGLE} defaultValue={config.model} selectChanged={selectChangeHandler} />
+	</div>
 	<div class="mb-4 flex-1 space-y-4 overflow-y-auto">
 		{#each messages as message}
 			<div class="flex {message.role === 'user' ? 'justify-end' : 'justify-start'}">

@@ -3,8 +3,10 @@
 	import type { AIConfig } from '$types';
 
 	const config: AIConfig = {
-		provider: 'google',
-		model: 'gemini-2.0-flash-001'
+		// provider: 'google',
+		// model: 'gemini-2.0-flash-001'
+		provider: 'ollama',
+		model: 'qwen2.5:7b'
 	};
 </script>
 

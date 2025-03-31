@@ -1,4 +1,4 @@
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createOllama } from 'ollama-ai-provider';
 import { generateText } from 'ai';
 import {
 	type LLMProvider,
@@ -8,16 +8,16 @@ import {
 	SYSTEM_PROMPT
 } from '$types';
 
-export class GeminiProvider implements LLMProvider {
-	private google;
+export class OllamaProvider implements LLMProvider {
+	private ollama;
 
 	constructor(
-		apiKey: string,
 		private toolsManager: ToolsManager,
-		private model: string = 'gemini-2.0-flash-001'
+		private model: string = 'qwen2.5:7b', // default model
+		private baseUrl: string = 'http://localhost:11434/api' // default Ollama endpoint
 	) {
-		this.google = createGoogleGenerativeAI({
-			apiKey
+		this.ollama = createOllama({
+			baseURL: this.baseUrl
 		});
 	}
 
@@ -37,12 +37,12 @@ export class GeminiProvider implements LLMProvider {
 			}
 
 			const result = await generateText({
-				model: this.google(this.model),
+				model: this.ollama(this.model),
 				messages: validMessages,
 				system: SYSTEM_PROMPT,
-				maxSteps: 5,
 				tools,
-				temperature: 0.5 // Add some temperature for more natural responses
+				maxSteps: 5,
+				temperature: 0.7 // Ollama often works well with a slightly higher temperature
 			});
 
 			const content = this.toolsManager.parseToolResults(result);
@@ -52,7 +52,7 @@ export class GeminiProvider implements LLMProvider {
 				content: content || 'I apologize, but I was unable to generate a response.'
 			};
 		} catch (error) {
-			console.error('Error in GeminiProvider:', error);
+			console.error('Error in OllamaProvider:', error);
 			throw error;
 		} finally {
 			await this.toolsManager.cleanupTools();

@@ -1,3 +1,5 @@
+import type { DataStreamWriter } from 'ai';
+
 export interface Message {
 	role: 'user' | 'assistant' | 'system';
 	content: string;
@@ -42,6 +44,7 @@ export interface LLMResponse {
 
 export interface LLMProvider {
 	generateResponse(messages: Message[]): Promise<LLMResponse>;
+	generateStreamResponse(messages: Message[], dataStream: DataStreamWriter): Promise<void>;
 }
 
 // export type AIProvider = 'google' | 'openai' | 'anthropic';

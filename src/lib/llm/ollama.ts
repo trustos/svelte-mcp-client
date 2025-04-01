@@ -10,6 +10,7 @@ import {
 
 export class OllamaProvider implements LLMProvider {
 	private ollama;
+	private ollamaSettings;
 
 	constructor(
 		private toolsManager: ToolsManager,
@@ -19,6 +20,10 @@ export class OllamaProvider implements LLMProvider {
 		this.ollama = createOllama({
 			baseURL: this.baseUrl
 		});
+
+		this.ollamaSettings = {
+			simulateStreaming: true
+		};
 	}
 
 	async generateResponse(messages: Message[]): Promise<LLMResponse> {
@@ -66,7 +71,7 @@ export class OllamaProvider implements LLMProvider {
 
 			// Step 1: Initial analysis
 			const result1 = streamText({
-				model: this.ollama(this.model),
+				model: this.ollama(this.model, this.ollamaSettings),
 				messages: validMessages,
 				system: 'Analyze the user request and determine required tools.',
 				maxSteps: 2,
@@ -82,7 +87,7 @@ export class OllamaProvider implements LLMProvider {
 			// Step 2: Generate response with tool results
 			const step1Messages = (await result1.response).messages;
 			const result2 = streamText({
-				model: this.ollama(this.model),
+				model: this.ollama(this.model, this.ollamaSettings),
 				messages: [...validMessages, ...step1Messages],
 				system: SYSTEM_PROMPT,
 				tools,

@@ -6,7 +6,7 @@
 		// provider: 'google',
 		// model: 'gemini-2.5-pro-exp-03-25'
 		provider: 'ollama',
-		model: 'qwen2.5:7b'
+		model: 'qwen2.5-coder:7b-instruct'
 	};
 </script>
 

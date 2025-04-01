@@ -17,16 +17,13 @@
 			return;
 		}
 
-		config.model = option.value;
+		config.model = option.value as typeof config.model;
 		config.provider = option.provider as string;
-
-		// (value) => {
-		// 	console.log(value);
-		// 	// (config.model = value)
-		// }
 	};
 
-	async function sendMessage() {
+	async function sendMessage(event?: SubmitEvent) {
+		if (event) event.preventDefault();
+
 		const trimmedMessage = inputMessage.trim();
 		if (!trimmedMessage || isLoading) return;
 
@@ -68,44 +65,60 @@
 	}
 </script>
 
-<div class="mx-auto flex h-[600px] max-w-2xl flex-col rounded-lg bg-white p-4 shadow-lg">
+<div class="flex h-[80vh] flex-col space-y-4">
 	<div class="mb-4 flex items-center">
 		<h2 class="text-xl font-bold">Model &nbsp;</h2>
-		<Dropdown options={GOOGLE} defaultValue={config.model} selectChanged={selectChangeHandler} />
+		<Dropdown
+			options={[...GOOGLE]}
+			defaultValue={config.model}
+			selectChanged={selectChangeHandler}
+		/>
 	</div>
-	<div class="mb-4 flex-1 space-y-4 overflow-y-auto">
+
+	<div class="flex-1 overflow-y-auto rounded-lg border p-4">
 		{#each messages as message}
-			<div class="flex {message.role === 'user' ? 'justify-end' : 'justify-start'}">
+			<div class="mb-4 flex flex-col {message.role === 'user' ? 'items-end' : 'items-start'}">
 				<div
-					class="max-w-[80%] rounded-lg p-3 {message.role === 'user'
-						? 'bg-blue-500 text-white'
-						: 'bg-gray-200'}"
+					class="max-w-[80%] rounded-lg p-4 {message.role === 'user'
+						? 'bg-primary text-primary-foreground'
+						: 'bg-muted'}"
 				>
-					{message.content}
+					<p class="whitespace-pre-wrap">{message.content}</p>
 				</div>
 			</div>
 		{/each}
+
 		{#if isLoading}
-			<div class="flex justify-start">
-				<div class="rounded-lg bg-gray-200 p-3">Thinking...</div>
+			<div class="flex items-center space-x-2">
+				<div class="h-2 w-2 animate-pulse rounded-full bg-primary"></div>
+				<div class="animation-delay-200 h-2 w-2 animate-pulse rounded-full bg-primary"></div>
+				<div class="animation-delay-400 h-2 w-2 animate-pulse rounded-full bg-primary"></div>
 			</div>
 		{/if}
 	</div>
 
-	<div class="flex gap-2">
+	<form onsubmit={sendMessage} class="flex items-center space-x-2">
 		<input
 			type="text"
 			bind:value={inputMessage}
-			onkeydown={(e) => e.key === 'Enter' && sendMessage()}
 			placeholder="Type your message..."
-			class="flex-1 rounded-lg border p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+			class="flex-1 rounded-lg border px-4 py-2 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
 		/>
 		<button
-			onclick={sendMessage}
+			type="submit"
 			disabled={isLoading}
-			class="rounded-lg bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 disabled:opacity-50"
+			class="rounded-lg bg-primary px-4 py-2 text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
 		>
 			Send
 		</button>
-	</div>
+	</form>
 </div>
+
+<style>
+	.animation-delay-200 {
+		animation-delay: 200ms;
+	}
+	.animation-delay-400 {
+		animation-delay: 400ms;
+	}
+</style>

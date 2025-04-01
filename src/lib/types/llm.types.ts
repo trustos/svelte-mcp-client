@@ -1,4 +1,5 @@
 import type { DataStreamWriter } from 'ai';
+import { GOOGLE, OLLAMA_MODELS } from './constants';
 
 export interface Message {
 	role: 'user' | 'assistant' | 'system';
@@ -49,8 +50,26 @@ export interface LLMProvider {
 
 // export type AIProvider = 'google' | 'openai' | 'anthropic';
 
-export interface AIConfig {
-	provider: string; // add more providers as needed
+export type GoogleModel = (typeof GOOGLE)[number]['value'];
+export type OllamaModel = (typeof OLLAMA_MODELS)[number];
+
+// Then in your AIConfig interface:
+export interface GoogleAIConfig {
+	provider: 'google';
+	model?: GoogleModel;
+	options?: Record<string, unknown>;
+}
+
+export interface OllamaAIConfig {
+	provider: 'ollama';
+	model?: OllamaModel;
+	options?: Record<string, unknown>;
+}
+
+export interface OtherAIConfig {
+	provider: string;
 	model?: string;
 	options?: Record<string, unknown>;
 }
+
+export type AIConfig = GoogleAIConfig | OllamaAIConfig | OtherAIConfig;

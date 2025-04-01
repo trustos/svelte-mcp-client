@@ -64,4 +64,12 @@ export const GOOGLE = [
 		label: 'Gemini 1.0 Pro Vision',
 		provider: 'google'
 	}
-];
+] as const;
+
+export const OLLAMA_MODELS = [
+	{
+		value: 'qwen2.5:7b',
+		label: 'Qwen 2.5 7B',
+		provider: 'ollama'
+	}
+] as const;

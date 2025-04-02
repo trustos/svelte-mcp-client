@@ -86,9 +86,21 @@ export class OllamaProvider implements LLMProvider {
 
 			// Step 2: Generate response with tool results
 			const step1Messages = (await result1.response).messages;
+			// Convert any tool messages to assistant messages
+			const convertedMessages = step1Messages.map(msg => {
+				if (msg.role === 'tool') {
+					return {
+						...msg,
+						role: 'assistant' as const,
+						content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+					};
+				}
+				return msg;
+			});
+
 			const result2 = streamText({
 				model: this.ollama(this.model, this.ollamaSettings),
-				messages: [...validMessages, ...step1Messages],
+				messages: [...validMessages, ...convertedMessages],
 				system: SYSTEM_PROMPT,
 				tools,
 				maxSteps: 5,

@@ -2,8 +2,11 @@ import type { DataStreamWriter } from 'ai';
 import { GOOGLE, OLLAMA_MODELS } from './constants';
 
 export interface Message {
-	role: 'user' | 'assistant' | 'system';
-	content: string;
+	role: 'user' | 'assistant' | 'system' | 'tool';
+	content: string | unknown;
+	name?: string;
+	tool_call_id?: string;
+	isError?: boolean;
 }
 
 export interface TextContent {
@@ -64,12 +67,14 @@ export interface OllamaAIConfig {
 	provider: 'ollama';
 	model?: OllamaModel;
 	options?: Record<string, unknown>;
+	baseUrl?: string;
 }
 
 export interface OtherAIConfig {
 	provider: string;
 	model?: string;
 	options?: Record<string, unknown>;
+	baseUrl?: string;
 }
 
 export type AIConfig = GoogleAIConfig | OllamaAIConfig | OtherAIConfig;

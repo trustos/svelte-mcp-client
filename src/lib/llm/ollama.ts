@@ -1,120 +1,59 @@
-import { createOllama } from 'ollama-ai-provider';
-import { generateText, streamText, type DataStreamWriter } from 'ai';
-import {
-	type LLMProvider,
-	type Message,
-	type LLMResponse,
-	type ToolsManager,
-	SYSTEM_PROMPT
-} from '$types';
+import { createOllama, type OllamaProvider as OllamaProv } from 'ollama-ai-provider';
+import type { CoreMessage, LanguageModel } from 'ai';
+import type { ToolsManager } from '$types';
+import { BaseLLMProvider } from './base-provider';
 
-export class OllamaProvider implements LLMProvider {
-	private ollama;
-	private ollamaSettings;
+// Define Ollama-specific settings if needed
+interface OllamaSettings {
+	simulateStreaming?: boolean;
+	// Add other Ollama-specific options here if necessary
+}
+
+export class OllamaProvider extends BaseLLMProvider {
+	private ollama: OllamaProv;
+	private ollamaSettings?: OllamaSettings; // Store settings if needed
 
 	constructor(
-		private toolsManager: ToolsManager,
-		private model: string = 'qwen2.5:7b', // default model
-		private baseUrl: string = 'http://localhost:11434/api' // default Ollama endpoint
+		toolsManager: ToolsManager,
+		model: string = 'qwen2:7b', // Updated default model based on common usage
+		private baseUrl: string = 'http://localhost:11434/api' // Default Ollama endpoint
 	) {
+		super(toolsManager, model); // Call base constructor
 		this.ollama = createOllama({
 			baseURL: this.baseUrl
 		});
 
+		// Define specific settings, e.g., for streaming
 		this.ollamaSettings = {
-			simulateStreaming: true
+			simulateStreaming: true // Keep this if needed for Ollama streaming behavior
 		};
+
+		// Override base temperatures if needed for Ollama
+		// this.defaultTemperature = 0.6;
+		// this.streamingTemperature = 0.8;
 	}
 
-	async generateResponse(messages: Message[]): Promise<LLMResponse> {
-		try {
-			const tools = await this.toolsManager.setupTools();
+	protected getModelInstance(isStreaming: boolean = false): LanguageModel {
+		// Pass settings only when streaming, if they are defined
+		return this.ollama(
+			this.modelName,
+			isStreaming && this.ollamaSettings ? this.ollamaSettings : undefined
+		);
+	}
 
-			// Filter out any empty messages and ensure proper formatting
-			const validMessages = messages.filter((msg) => msg.content?.trim());
-
-			// Add a system message if none exists
-			if (!validMessages.some((msg) => msg.role === 'system')) {
-				validMessages.unshift({
-					role: 'system',
-					content: 'You are a helpful assistant that can use various tools to help users.'
-				});
+	protected processIntermediateStreamMessages(messages: CoreMessage[]): CoreMessage[] {
+		// Convert tool messages to assistant messages for the second step
+		return messages.map((msg) => {
+			if (msg.role === 'tool') {
+				// Ensure content is stringified for the assistant message
+				const contentString =
+					typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+				return {
+					role: 'assistant' as const, // Convert role
+					content: `Tool response:\n${contentString}` // Prepend context
+				};
 			}
-
-			const result = await generateText({
-				model: this.ollama(this.model),
-				messages: validMessages,
-				system: SYSTEM_PROMPT,
-				tools,
-				maxSteps: 5,
-				temperature: 0.7 // Ollama often works well with a slightly higher temperature
-			});
-
-			const content = this.toolsManager.parseToolResults(result);
-
-			return {
-				role: 'assistant',
-				content: content || 'I apologize, but I was unable to generate a response.'
-			};
-		} catch (error) {
-			console.error('Error in OllamaProvider:', error);
-			throw error;
-		} finally {
-			await this.toolsManager.cleanupTools();
-		}
-	}
-
-	async generateStreamResponse(messages: Message[], dataStream: DataStreamWriter): Promise<void> {
-		try {
-			const tools = await this.toolsManager.setupTools();
-			const validMessages = messages.filter((msg) => msg.content?.trim());
-
-			// Step 1: Initial analysis
-			const result1 = streamText({
-				model: this.ollama(this.model, this.ollamaSettings),
-				messages: validMessages,
-				system: 'Analyze the user request and determine required tools.',
-				maxSteps: 2,
-				experimental_continueSteps: true,
-				tools,
-				temperature: 0.5 // Add some temperature for more natural responses
-			});
-
-			result1.mergeIntoDataStream(dataStream, {
-				experimental_sendFinish: false
-			});
-
-			// Step 2: Generate response with tool results
-			const step1Messages = (await result1.response).messages;
-			// Convert any tool messages to assistant messages
-			const convertedMessages = step1Messages.map(msg => {
-				if (msg.role === 'tool') {
-					return {
-						...msg,
-						role: 'assistant' as const,
-						content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
-					};
-				}
-				return msg;
-			});
-
-			const result2 = streamText({
-				model: this.ollama(this.model, this.ollamaSettings),
-				messages: [...validMessages, ...convertedMessages],
-				system: SYSTEM_PROMPT,
-				tools,
-				maxSteps: 5,
-				temperature: 0.7
-			});
-
-			result2.mergeIntoDataStream(dataStream, {
-				experimental_sendStart: false
-			});
-		} catch (error) {
-			console.error('Error in OllamaProvider:', error);
-			throw error;
-		} finally {
-			await this.toolsManager.cleanupTools();
-		}
+			return msg;
+		});
 	}
 }

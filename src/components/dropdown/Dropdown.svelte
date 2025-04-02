@@ -11,7 +11,7 @@
 	type Props = {
 		options: DropdownOptions[];
 		placeholder?: string;
-		defaultValue?: string;
+		defaultValue?: unknown;
 		selectChanged: (value: DropdownOptions | undefined) => void;
 	};
 

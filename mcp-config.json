@@ -2,11 +2,13 @@
 	"mcpServers": {
 		"filesystem": {
 			"command": "npx",
-			"args": ["-y", "@modelcontextprotocol/server-filesystem", "/Users/yavortenev/Desktop"]
+			"args": ["-y", "@modelcontextprotocol/server-filesystem", "/Users/yavortenev/Desktop"],
+			"capabilities": ["filesystem"]
 		},
 		"airbnb": {
 			"command": "npx",
-			"args": ["-y", "@openbnb/mcp-server-airbnb", "--ignore-robots-txt"]
+			"args": ["-y", "@openbnb/mcp-server-airbnb", "--ignore-robots-txt"],
+			"capabilities": ["search", "booking"]
 		}
 	}
 }

@@ -3,8 +3,10 @@ import { MCPTool } from './mcp.tool';
 
 export class ToolFactory {
 	static createTools(config: Config): AITool[] {
-		return Object.entries(config.mcpServers).map(([_, serverConfig]) => {
-			return new MCPTool(serverConfig);
+		// Capture both the serverId (key) and serverConfig (value)
+		return Object.entries(config.mcpServers).map(([serverId, serverConfig]) => {
+			// Pass BOTH arguments to the constructor
+			return new MCPTool(serverConfig, serverId);
 		});
 	}
 }

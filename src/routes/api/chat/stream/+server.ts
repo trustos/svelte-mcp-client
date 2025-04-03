@@ -11,18 +11,28 @@ export const POST: RequestHandler = async ({ request }) => {
 
 	return createDataStreamResponse({
 		execute: async (dataStream) => {
-			try {
-				const mcpConfig = loadConfig();
-				const tools = ToolFactory.createTools(mcpConfig);
-				const toolsManager = new AIToolsManager(tools);
-				const provider = AIProviderFactory.createProvider(config, toolsManager);
+			const mcpConfig = loadConfig();
+			const tools = ToolFactory.createTools(mcpConfig);
+			const toolsManager = new AIToolsManager(tools);
+			const provider = AIProviderFactory.createProvider(config, toolsManager);
 
+			try {
 				// Call generateStreamResponse which will handle the streaming
 				await provider.generateStreamResponse(messages, dataStream);
 			} catch (error) {
 				console.error('Error in chat endpoint:', error);
-				throw error;
+				dataStream.writeData({
+					type: 'error',
+					error: { message: error instanceof Error ? error.message : String(error) }
+				});
+			} finally {
+				// IMPORTANT: Only clean up after the stream is fully processed
+				// DO NOT close MCP clients during the stream
 			}
+		},
+		onError: (error) => {
+			console.error('Stream error:', error);
+			return error instanceof Error ? error.message : 'An unknown error occurred';
 		}
 	});
 };

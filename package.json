@@ -50,6 +50,7 @@
 	},
 	"dependencies": {
 		"@ai-sdk/google": "^1.2.3",
+		"@ai-sdk/svelte": "^2.1.5",
 		"@google-cloud/vertexai": "^1.9.3",
 		"@google/genai": "^0.6.1",
 		"@inlang/paraglide-sveltekit": "^0.15.5",

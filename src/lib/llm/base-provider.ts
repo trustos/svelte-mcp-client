@@ -5,7 +5,8 @@ import {
 	type CoreToolMessage,
 	type DataStreamWriter,
 	type LanguageModel,
-	type ToolResultPart
+	type ToolResultPart,
+	type ToolSet
 } from 'ai';
 import {
 	type LLMProvider,
@@ -17,8 +18,8 @@ import {
 
 export abstract class BaseLLMProvider implements LLMProvider {
 	// Temperatures can be overridden by subclasses if needed
-	protected defaultTemperature = 0.5;
-	protected streamingTemperature = 0.7;
+	protected defaultTemperature = 0.3;
+	protected streamingTemperature = 0.3;
 
 	constructor(
 		protected toolsManager: ToolsManager,
@@ -47,127 +48,122 @@ export abstract class BaseLLMProvider implements LLMProvider {
 	 * - Adds a system prompt if none exists.
 	 */
 	protected prepareMessages(messages: Message[]): CoreMessage[] {
+		console.log(`[LLM] Preparing ${messages.length} messages`);
+
 		const validMessages = messages
-			.filter(
-				(msg) =>
+			.filter((msg) => {
+				const isValid =
 					msg.content != null &&
 					String(msg.content).trim() !== '' &&
-					['user', 'assistant', 'system', 'tool'].includes(msg.role)
-			)
+					['user', 'assistant', 'system', 'tool'].includes(msg.role);
+				if (!isValid) {
+					console.log(`[LLM] Filtered out invalid message:`, msg);
+				}
+				return isValid;
+			})
 			.map((msg): CoreMessage => {
-				// Handle tool messages
+				console.log(`[LLM] Processing message of role: ${msg.role}`);
+
 				if (msg.role === 'tool') {
+					console.log(`[LLM] Processing tool message with id: ${msg.tool_call_id}`);
 					const toolResult: ToolResultPart = {
 						type: 'tool-result',
 						toolCallId: msg.tool_call_id || '',
 						toolName: msg.name || '',
 						result: msg.content,
-						isError: false // default to false unless explicitly set
+						isError: false
 					};
-
 					return {
 						role: 'tool',
 						content: [toolResult]
 					} as CoreToolMessage;
 				}
 
-				// Handle regular messages
 				return {
 					role: msg.role as 'user' | 'assistant' | 'system',
 					content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
 				};
 			});
 
-		// Add system message if none exists
 		if (!validMessages.some((msg) => msg.role === 'system')) {
+			console.log('[LLM] Adding default system prompt');
 			validMessages.unshift({
 				role: 'system',
 				content: SYSTEM_PROMPT
 			});
 		}
 
+		console.log(`[LLM] Prepared ${validMessages.length} valid messages`);
 		return validMessages;
 	}
 
 	async generateResponse(messages: Message[]): Promise<LLMResponse> {
+		console.log(`[LLM] Generating response for ${messages.length} messages`);
 		try {
 			const tools = await this.toolsManager.setupTools();
+			console.log(`[LLM] Tools setup completed, available tools:`, Object.keys(tools));
+
 			const preparedMessages = this.prepareMessages(messages);
+			console.log('[LLM] Generating text with model:', this.modelName);
 
 			const result = await generateText({
-				model: this.getModelInstance(false), // Not streaming
+				model: this.getModelInstance(false),
 				messages: preparedMessages,
-				// System prompt is now added in prepareMessages if needed,
-				// but we still pass the main one to generateText for context.
 				system: SYSTEM_PROMPT,
 				maxSteps: 5,
-				experimental_continueSteps: true, // Keep for potential multi-step non-streaming tool use
+				experimental_continueSteps: true,
 				tools,
 				temperature: this.defaultTemperature
 			});
 
+			console.log('[LLM] Raw result received from model');
 			const content = this.toolsManager.parseToolResults(result);
+			console.log('[LLM] Parsed tool results:', content);
 
 			return {
 				role: 'assistant',
 				content: content || 'I apologize, but I was unable to generate a response.'
 			};
 		} catch (error) {
-			console.error(`Error in ${this.constructor.name}:`, error);
-			throw error; // Re-throw the error after logging
+			console.error(`[LLM] Error in ${this.constructor.name}:`, error);
+			throw error;
 		} finally {
+			console.log('[LLM] Cleaning up tools');
 			await this.toolsManager.cleanupTools();
 		}
 	}
 
 	async generateStreamResponse(messages: Message[], dataStream: DataStreamWriter): Promise<void> {
-		let tools;
+		let tools: ToolSet;
 		try {
 			tools = await this.toolsManager.setupTools();
 			const preparedMessages = this.prepareMessages(messages);
 
-			// Step 1: Initial analysis / Tool determination
-			const result1 = streamText({
-				model: this.getModelInstance(true), // Streaming
+			const stream = streamText({
+				model: this.getModelInstance(true),
 				messages: preparedMessages,
-				// System prompt for analysis step (could be different if needed)
-				system:
-					'Analyze the user request and determine required tools. Respond concisely if no tools are needed.',
-				maxSteps: 2, // Limit steps for analysis phase
-				experimental_continueSteps: true,
+				system: SYSTEM_PROMPT,
+				maxSteps: 5,
 				tools,
-				temperature: this.defaultTemperature // Lower temperature for analysis
+				temperature: this.streamingTemperature,
+				// Add onFinish callback to clean up only when complete
+				onFinish: async () => {
+					// Only now is it safe to clean up tools
+					if (tools) {
+						console.log('[LLM] Stream: Cleaning up tools after completion');
+						await this.toolsManager.cleanupTools();
+					}
+				}
 			});
 
-			// Merge stream 1 without sending finish
-			result1.mergeIntoDataStream(dataStream, {
-				experimental_sendFinish: false
-			});
+			// Ensure stream is consumed even if client disconnects
+			stream.consumeStream();
 
-			// Await the *full* response from step 1 to get intermediate messages
-			const step1Result = await result1.response;
+			stream.mergeIntoDataStream(dataStream);
 
-			// Process intermediate messages (provider-specific logic)
-			const intermediateMessages = this.processIntermediateStreamMessages(step1Result.messages);
-
-			// Step 2: Generate final response with tool results (if any)
-			const result2 = streamText({
-				model: this.getModelInstance(true), // Streaming
-				// Combine original prepared messages with processed intermediate ones
-				messages: [...preparedMessages, ...intermediateMessages],
-				system: SYSTEM_PROMPT, // Main system prompt for generation
-				tools,
-				maxSteps: 5, // Allow more steps for generation
-				temperature: this.streamingTemperature // Higher temperature for generation
-			});
-
-			// Merge stream 2 without sending start
-			result2.mergeIntoDataStream(dataStream, {
-				experimental_sendStart: false
-			});
+			// REMOVE THIS LINE - Don't call cleanup here
 		} catch (error) {
 			console.error(`Error in streaming ${this.constructor.name}:`, error);
-			// Try to send an error message through the stream if possible
 			try {
 				const errorJson = JSON.stringify({
 					type: 'error',
@@ -177,17 +173,9 @@ export abstract class BaseLLMProvider implements LLMProvider {
 			} catch (streamError) {
 				console.error('Failed to send error via dataStream:', streamError);
 			}
-			// Ensure stream is closed even on error
-			throw error; // Re-throw the original error
-		} finally {
-			if (tools) {
-				// Only cleanup if setupTools succeeded
-				await this.toolsManager.cleanupTools();
-			}
-			// Ensure the stream is closed in the finally block if it hasn't been already
-			// (mergeIntoDataStream should handle closing on success)
-			// dataStream.close(); // Careful: mergeIntoDataStream might already close it. Test this.
-			// Let's rely on mergeIntoDataStream to close on success.
+
+			// Don't clean up tools here either - might cause nested errors
+			throw error;
 		}
 	}
 }

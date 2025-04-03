@@ -1,6 +1,6 @@
 import { Experimental_StdioMCPTransport as stdioTransport } from 'ai/mcp-stdio';
 import { experimental_createMCPClient } from 'ai';
-import type { ContentItem, MCPServerConfig } from '$types';
+import type { MCPServerConfig } from '$types';
 import type { ToolSet } from 'ai';
 import { BaseMCPTool } from './base.tool';
 
@@ -69,58 +69,58 @@ export class MCPTool extends BaseMCPTool {
 	// }
 
 	parseToolResult(resultData: unknown): string {
-		// Defensive check: Ensure resultData is an object before proceeding
+		// 1. Handle non-object inputs defensively
 		if (typeof resultData !== 'object' || resultData === null) {
 			console.warn(
 				`[MCPTool ${this.serverId}] Received non-object result for parsing:`,
 				resultData
 			);
-			return JSON.stringify(resultData) ?? '';
-		}
-
-		const result = resultData as Record<string, unknown>; // Cast for easier access
-
-		if (typeof result === 'object' && result !== null && 'status' in result) {
-			if (result.status === 'error') {
-				console.error(
-					`[MCPTool ${this.serverId}] Tool execution failed:`,
-					result.message || 'Unknown error'
-				);
-				return `Tool execution failed: ${result.message || 'Unknown error'}`;
-			}
-			// Handle success status if needed, e.g., extracting a specific message
-			if (result.status === 'success' && result.message && typeof result.message === 'string') {
-				return result.message;
+			try {
+				// Attempt to stringify even non-objects
+				return JSON.stringify(resultData) ?? '[Received unparseable non-object result]';
+			} catch (e) {
+				console.error(`[MCPTool ${this.serverId}] Error stringifying non-object result:`, e);
+				return '[Received unparseable non-object result]';
 			}
 		}
 
-		// Check for the 'content' array structure specifically
-		if ('content' in result && Array.isArray(result.content)) {
-			const contentItems = result.content as ContentItem[]; // Type assertion
-			return contentItems
-				.map((item: ContentItem) => {
-					if (item.type === 'text') {
-						return item.text;
-					} else if (item.type === 'resource' && item.resource?.text) {
-						// Check resource exists
-						return item.resource.text;
-					} else if (item.type === 'image') {
-						return `[Image data: ${item.mimeType ?? 'unknown type'}]`; // Handle missing mimeType
-					}
-					// Consider logging unsupported types more explicitly
-					console.warn(`[MCPTool ${this.serverId}] Unsupported content item type: ${item.type}`);
-					return `[Unsupported content type: ${item.type}]`;
-				})
-				.filter(Boolean) // Filter out potential null/undefined from mapping
-				.join('\n'); // Join with newline for readability
+		// 2. Cast to Record for easier property access
+		const result = resultData as Record<string, unknown>;
+
+		// 3. Handle Explicit Errors first
+		// Check if the result object itself indicates an error status
+		if (result.isError === true || result.status === 'error') {
+			const errorMessage = typeof result.message === 'string' ? result.message : 'Unknown error';
+			console.error(
+				`[MCPTool ${this.serverId}] Tool execution failed:`,
+				errorMessage,
+				'Full result:',
+				result
+			);
+			// Return a clear error message string to the LLM
+			return `Tool '${this.constructor.name}' execution failed: ${errorMessage}`;
 		}
 
-		// Fallback: Stringify the whole result object if 'content' array isn't found or structure is different
-		console.log(
-			`[MCPTool ${this.serverId}] Result structure not recognized for direct content extraction, stringifying:`,
-			result
-		);
-		return JSON.stringify(result, null, 2);
+		// 4. For ALL other cases (success, or unknown status/structure), stringify the *entire* result object.
+		// This ensures the full JSON from airbnb_search (or any tool) is preserved as a string.
+		try {
+			// Use indentation for readability in logs and potentially easier parsing by LLM
+			const jsonString = JSON.stringify(result, null, 2);
+			console.log(
+				`[MCPTool ${this.serverId}] Stringifying entire successful/non-error tool result.`
+			);
+			// console.log("Stringified Result:", jsonString); // Optional: Log the actual string being returned
+			return jsonString;
+		} catch (stringifyError) {
+			console.error(
+				`[MCPTool ${this.serverId}] Failed to stringify tool result:`,
+				stringifyError,
+				'Original result:',
+				result
+			);
+			// Fallback if stringify fails
+			return `[Failed to stringify tool result: ${stringifyError instanceof Error ? stringifyError.message : 'Unknown error'}]`;
+		}
 	}
 
 	hasCapability(capability: string): boolean {

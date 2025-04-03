@@ -3,12 +3,12 @@
 	import type { AIConfig } from '$types';
 
 	const config: AIConfig = {
-		// provider: 'google',
-		// model: 'gemini-2.0-flash-001'
+		provider: 'google',
+		model: 'gemini-2.0-flash-001'
 		// model: 'gemini-2.5-pro-exp-03-25'
 		// model: 'zoyer2/Qwen2.5-Coder-7B-Instruct-Q4_K_M-64K-CLINE'
-		provider: 'ollama',
-		model: 'qwen2.5:7b'
+		// provider: 'ollama',
+		// model: 'qwen2.5:7b'
 	};
 </script>
 

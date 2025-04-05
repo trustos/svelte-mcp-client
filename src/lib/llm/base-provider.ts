@@ -110,7 +110,7 @@ export abstract class BaseLLMProvider implements LLMProvider {
 				model: this.getModelInstance(false),
 				messages: preparedMessages,
 				system: SYSTEM_PROMPT,
-				maxSteps: 5,
+				maxSteps: 15,
 				experimental_continueSteps: true,
 				tools,
 				temperature: this.defaultTemperature
@@ -143,7 +143,7 @@ export abstract class BaseLLMProvider implements LLMProvider {
 				model: this.getModelInstance(true),
 				messages: preparedMessages,
 				system: SYSTEM_PROMPT,
-				maxSteps: 5,
+				maxSteps: 15,
 				tools,
 				temperature: this.streamingTemperature,
 				// Add onFinish callback to clean up only when complete

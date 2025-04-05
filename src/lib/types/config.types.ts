@@ -5,6 +5,7 @@ export interface MCPServerConfig {
 	// or handle cases where it's missing gracefully.
 	// Using specific known types helps, but keep string for flexibility.
 	capabilities: ('filesystem' | 'search' | 'booking' | string)[];
+	env?: NodeJS.ProcessEnv;
 }
 
 export interface Config {

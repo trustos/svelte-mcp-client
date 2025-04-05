@@ -24,10 +24,23 @@ export class MCPTool extends BaseMCPTool {
 
 	async setup(): Promise<ToolSet> {
 		try {
+			// Filter out undefined values from the env object
+			// Use a type predicate function signature for the filter
+			const transportEnv = this.config.env
+				? Object.fromEntries(
+						Object.entries(this.config.env).filter(
+							(entry): entry is [string, string] => typeof entry[1] === 'string'
+						)
+					)
+				: undefined;
+
+			console.log(`[MCPTool] Setting up env vars: ${JSON.stringify(transportEnv)}...`);
+
 			console.log(`[MCPTool] Setting up ${this.serverId}...`);
 			const stdio = new stdioTransport({
 				command: this.config.command,
-				args: this.config.args
+				args: this.config.args,
+				env: transportEnv
 			});
 
 			this.client = await experimental_createMCPClient({

@@ -9,7 +9,7 @@ export class GeminiProvider extends BaseLLMProvider {
 	constructor(
 		apiKey: string,
 		toolsManager: ToolsManager,
-		model: string = 'gemini-1.5-flash-latest' // Updated default model
+		model: string = 'gemini-2.0-001' // Updated default model
 	) {
 		super(toolsManager, model); // Call base constructor
 		this.google = createGoogleGenerativeAI({

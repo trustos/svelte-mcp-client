@@ -9,6 +9,14 @@
 			"command": "npx",
 			"args": ["-y", "@openbnb/mcp-server-airbnb", "--ignore-robots-txt"],
 			"capabilities": ["search", "booking"]
+		},
+		"google-search": {
+			"command": "node",
+			"args": ["./mcp-servers/mcp-google-custom-search-server/build/index.js"],
+			"env": {
+				"GOOGLE_API_KEY": "${GOOGLE_CUSTOM_SEARCH_API_KEY}",
+				"GOOGLE_SEARCH_ENGINE_ID": "${GOOGLE_CUSTOM_SEARCH_ENGINE_ID}"
+			}
 		}
 	}
 }

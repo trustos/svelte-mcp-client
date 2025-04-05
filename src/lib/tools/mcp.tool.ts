@@ -26,6 +26,7 @@ export class MCPTool extends BaseMCPTool {
 		try {
 			// Filter out undefined values from the env object
 			// Use a type predicate function signature for the filter
+			console.log(`[MCPTool] Setting up env vars...`);
 			const transportEnv = this.config.env
 				? Object.fromEntries(
 						Object.entries(this.config.env).filter(
@@ -33,8 +34,6 @@ export class MCPTool extends BaseMCPTool {
 						)
 					)
 				: undefined;
-
-			console.log(`[MCPTool] Setting up env vars: ${JSON.stringify(transportEnv)}...`);
 
 			console.log(`[MCPTool] Setting up ${this.serverId}...`);
 			const stdio = new stdioTransport({

@@ -1,21 +1,39 @@
 <script lang="ts">
 	import { Chat } from '@ai-sdk/svelte';
-	// import type { Me } from 'ai';
 
 	let { config } = $props();
+	let locationData: { latitude: number | null; longitude: number | null } = $state({
+		latitude: null,
+		longitude: null
+	}); // Default values
 
-	// interface ChatInstance extends Chat {
-	// 	messages: ChatCompletionMessage[];
-	// 	input: string;
-	// 	handleSubmit: (event: SubmitEvent) => Promise<void>;
-	// 	status: 'submitted' | 'streaming' | 'ready' | 'error';
-	// }
+	$effect(() => {
+		if (navigator.geolocation) {
+			navigator.geolocation.getCurrentPosition(
+				(position) => {
+					locationData.latitude = position.coords.latitude;
+					locationData.longitude = position.coords.longitude;
+				},
+				(error) => {
+					console.error('Error getting location:', error);
+				}
+			);
+		} else {
+			console.log('Geolocation is not available.');
+		}
+	});
+
+	const context = $derived({
+		dateTime: new Date().toISOString(),
+		location: locationData
+	});
 
 	const chat = new Chat({
 		api: '/api/chat/stream',
 		maxSteps: 5,
 		body: {
-			config
+			config,
+			context: (() => context)()
 		},
 		onError: (error: Error) => {
 			console.error('Chat error:', error);

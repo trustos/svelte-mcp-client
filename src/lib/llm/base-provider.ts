@@ -2,7 +2,6 @@ import {
 	generateText,
 	streamText,
 	type CoreMessage,
-	type CoreToolMessage,
 	type DataStreamWriter,
 	type LanguageModel,
 	type ToolResultPart,
@@ -13,6 +12,7 @@ import {
 	type Message,
 	type LLMResponse,
 	type ToolsManager,
+	type RequestContext,
 	SYSTEM_PROMPT
 } from '$types';
 
@@ -47,7 +47,7 @@ export abstract class BaseLLMProvider implements LLMProvider {
 	 * - Stringifies non-string content.
 	 * - Adds a system prompt if none exists.
 	 */
-	protected prepareMessages(messages: Message[]): CoreMessage[] {
+	protected prepareMessages(messages: Message[], context?: RequestContext): CoreMessage[] {
 		console.log(`[LLM] Preparing ${messages.length} messages`);
 
 		const validMessages = messages
@@ -76,7 +76,7 @@ export abstract class BaseLLMProvider implements LLMProvider {
 					return {
 						role: 'tool',
 						content: [toolResult]
-					} as CoreToolMessage;
+					};
 				}
 
 				return {
@@ -86,10 +86,23 @@ export abstract class BaseLLMProvider implements LLMProvider {
 			});
 
 		if (!validMessages.some((msg) => msg.role === 'system')) {
-			console.log('[LLM] Adding default system prompt');
+			console.log('[LLM] Adding default system prompt with context');
+			let contextPrefix = '';
+			if (context?.dateTime) {
+				contextPrefix += `Current date and time: ${context.dateTime}\n`;
+			}
+			if (context?.location) {
+				contextPrefix += `Current location: Latitude ${context.location.latitude}, Longitude ${context.location.longitude}\n`;
+			}
+			const systemContent = contextPrefix ? `${contextPrefix}\n${SYSTEM_PROMPT}` : SYSTEM_PROMPT;
+
+
+			console.log(context);
+			console.log(systemContent);
+
 			validMessages.unshift({
 				role: 'system',
-				content: SYSTEM_PROMPT
+				content: systemContent
 			});
 		}
 
@@ -97,19 +110,18 @@ export abstract class BaseLLMProvider implements LLMProvider {
 		return validMessages;
 	}
 
-	async generateResponse(messages: Message[]): Promise<LLMResponse> {
+	async generateResponse(messages: Message[], context?: RequestContext): Promise<LLMResponse> {
 		console.log(`[LLM] Generating response for ${messages.length} messages`);
 		try {
 			const tools = await this.toolsManager.setupTools();
 			console.log(`[LLM] Tools setup completed, available tools:`, Object.keys(tools));
 
-			const preparedMessages = this.prepareMessages(messages);
+			const preparedMessages = this.prepareMessages(messages, context);
 			console.log('[LLM] Generating text with model:', this.modelName);
 
 			const result = await generateText({
 				model: this.getModelInstance(false),
 				messages: preparedMessages,
-				system: SYSTEM_PROMPT,
 				maxSteps: 15,
 				experimental_continueSteps: true,
 				tools,
@@ -133,16 +145,19 @@ export abstract class BaseLLMProvider implements LLMProvider {
 		}
 	}
 
-	async generateStreamResponse(messages: Message[], dataStream: DataStreamWriter): Promise<void> {
+	async generateStreamResponse(
+		messages: Message[],
+		dataStream: DataStreamWriter,
+		context?: RequestContext
+	): Promise<void> {
 		let tools: ToolSet;
 		try {
 			tools = await this.toolsManager.setupTools();
-			const preparedMessages = this.prepareMessages(messages);
+			const preparedMessages = this.prepareMessages(messages, context);
 
 			const stream = streamText({
 				model: this.getModelInstance(true),
 				messages: preparedMessages,
-				system: SYSTEM_PROMPT,
 				maxSteps: 15,
 				tools,
 				temperature: this.streamingTemperature,

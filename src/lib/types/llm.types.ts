@@ -46,9 +46,19 @@ export interface LLMResponse {
 	content: string;
 }
 
+// Define a specific type for the context object
+export interface RequestContext {
+	dateTime?: string;
+	location?: {
+		latitude: number;
+		longitude: number;
+	};
+	// Add other potential context fields here
+}
+
 export interface LLMProvider {
-	generateResponse(messages: Message[]): Promise<LLMResponse>;
-	generateStreamResponse(messages: Message[], dataStream: DataStreamWriter): Promise<void>;
+	generateResponse(messages: Message[], context?: RequestContext): Promise<LLMResponse>;
+	generateStreamResponse(messages: Message[], dataStream: DataStreamWriter, context?: RequestContext): Promise<void>;
 }
 
 // export type AIProvider = 'google' | 'openai' | 'anthropic';

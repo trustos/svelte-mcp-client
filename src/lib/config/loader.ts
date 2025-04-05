@@ -29,8 +29,6 @@ function parse(content: string): Record<string, string> {
 		}
 	}
 
-	console.log(result);
-
 	return result;
 }
 

@@ -17,6 +17,10 @@
 				"GOOGLE_API_KEY": "${GOOGLE_CUSTOM_SEARCH_API_KEY}",
 				"GOOGLE_SEARCH_ENGINE_ID": "${GOOGLE_CUSTOM_SEARCH_ENGINE_ID}"
 			}
+		},
+		"osm-mcp-server": {
+			"command": "uvx",
+			"args": ["osm-mcp-server"]
 		}
 	}
 }
